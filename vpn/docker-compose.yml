@@ -1,0 +1,22 @@
+version: '2'
+
+networks:
+  default:
+    external: false
+  pi-hole_default:
+    external: true
+
+services:
+  openvpn:
+    cap_add:
+     - NET_ADMIN
+    image: mjenz/rpi-openvpn
+    container_name: openvpn
+    ports:
+     - "1194:1194/udp"
+    restart: always
+    networks:
+     - default
+     - pi-hole_default
+    volumes:
+     - ./openvpn-data/conf:/etc/openvpn

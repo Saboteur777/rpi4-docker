@@ -1,0 +1,73 @@
+version: '3'
+
+volumes:
+  prometheus_data: {}
+  grafana_data: {}
+
+services:
+  prometheus:
+    image: napnap75/rpi-prometheus:prometheus
+    depends_on:
+      - cadvisor
+      - node_exporter
+    restart: always
+    expose:
+      - 9090
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention=10d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+
+  node_exporter:
+    image: napnap75/rpi-prometheus:node_exporter
+    restart: always
+    expose:
+      - 9100
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - --collector.filesystem.ignored-mount-points
+      - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
+
+  arm_exporter:
+    image: carlosedp/arm_exporter
+    restart: always
+    expose:
+      - 9243
+
+  cadvisor:
+    image: carlosedp/rpi-cadvisor
+    restart: always
+    expose:
+      - 8080
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    command:
+      - --global_housekeeping_interval=30s
+      - --housekeeping_interval=5s
+      - --storage_duration=1m0s
+
+  grafana:
+    image: fg2it/grafana-armhf:v4.6.3
+    depends_on:
+      - prometheus
+    restart: always
+    ports:
+      - 3000:3000
+    volumes:
+      - grafana_data:/var/lib/grafana
+    env_file:
+      - config.monitoring
+
